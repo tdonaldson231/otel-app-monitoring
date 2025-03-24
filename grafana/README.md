@@ -3,7 +3,7 @@
 local setup includes: \
 ✅ Grafana for visualization\
 ✅ Prometheus for storing metrics\
-✅ OpenTelemetry for collecting metrics\
+✅ OpenTelemetry for collecting metrics
 
 ### Local Setup / Usage
 
