@@ -16,8 +16,13 @@ docker-compose up -d
 
 ### View Metrics in Prometheus and Grafana
 - Grafana: http://localhost:3000
-	- Configure Prometheus as a data source (http://prometheus:9090)
-	- Create a dashboard to visualize http_requests
+- Add the following data sources:
+  - Prometheus: http://prometheus:9090
+  - Jaeger: http://jaeger:16686
+- Access the endpoints from `otel-app`
+  - http://localhost:31440/health
+  - http://localhost:31440/random
+  - http://localhost:31440/quote 
  
 ### otel-collector-config.yaml
 - receivers.otlp: Allows the OpenTelemetry Collector to receive data from applications (OTLP over gRPC & HTTP).
