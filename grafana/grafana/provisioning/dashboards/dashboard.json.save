@@ -1,0 +1,67 @@
+{
+  "dashboard": {
+    "id": null,
+    "uid": "multi-datasource-dashboard",
+    "title": "Prometheus, Loki, Jaeger Dashboard",
+    "panels": [
+      {
+        "type": "graph",
+        "title": "CPU Usage",
+        "targets": [
+          {
+            "expr": "rate(node_cpu_seconds_total{mode='idle'}[1m])",
+            "datasource": {
+              "type": "prometheus",
+              "uid": "prometheus"
+            }
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 0,
+          "w": 12,
+          "h": 6
+        }
+      },
+      {
+        "type": "logs",
+        "title": "Loki Logs",
+        "targets": [
+          {
+            "expr": "{job='your_job_name'}",
+            "datasource": {
+              "type": "loki",
+              "uid": "loki"
+            }
+          }
+        ],
+        "gridPos": {
+          "x": 12,
+          "y": 0,
+          "w": 12,
+          "h": 6
+        }
+      },
+      {
+        "type": "jaeger",
+        "title": "Jaeger Traces",
+        "targets": [
+          {
+            "service": "your_service_name",
+            "operation": "your_operation_name",
+            "datasource": {
+              "type": "jaeger",
+              "uid": "jaeger"
+            }
+          }
+        ],
+        "gridPos": {
+          "x": 0,
+          "y": 6,
+          "w": 12,
+          "h": 6
+        }
+      }
+    ]
+  }
+}

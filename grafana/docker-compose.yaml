@@ -1,0 +1,123 @@
+#version: "3.7"
+
+services:
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml -config.expand-env=true
+    volumes:
+      - ./loki/wal:/loki/wal
+    networks:
+      - net_monitor
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    ports:
+      - "9080:9080"  # Promtail's HTTP port (optional for metrics)
+    networks:
+      - net_monitor
+    volumes:
+      - ./promtail/promtail.yaml:/etc/promtail/promtail.yaml  # Mount Promtail config file
+      #- /var/log:/var/log  # Ensure log files are available for Promtail to scrape
+      - /var/lib/docker/containers:/var/lib/docker/containers
+    depends_on:
+      - loki  # Ensure Loki is up before Promtail starts
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4317:4317"    # OTLP gRPC (changed to match otel-collector)
+      - "4318:4318"    # OTLP HTTP
+    networks:
+      - net_monitor
+  tempo:
+    image: grafana/tempo:latest
+    container_name: tempo
+    ports:
+      - "3200:3200"  # Tempo's HTTP port for queries
+    volumes:
+      - ./tempo:/etc/tempo  # Mount configuration (optional)
+    command: [ "-config.file=/etc/tempo/tempo-config.yaml" ]
+    networks:
+      - net_monitor
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"  # Grafana UI
+    depends_on:
+      - loki
+      - jaeger
+      - prometheus
+      - pyroscope
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin  # Admin password for Grafana
+      - GF_AUTH_ANONYMOUS_ENABLED=true  # Allow anonymous access (optional)
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=pyroscope-datasource
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning  # Mount your custom provisioning if needed
+    networks:
+      - net_monitor
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+    ports:
+      - "9090:9090"
+    networks:
+      - net_monitor
+ 
+  pyroscope:
+    image: grafana/pyroscope:latest
+    container_name: pyroscope
+    ports:
+      - "4040:4040"
+    command: [ "server" ]  # Ensures Pyroscope runs in server mode
+    networks:
+      - net_monitor
+
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    ports:
+      - "43200:4317"  # Map a different host port to the container's 4317
+      - "43218:4318"
+      - "9464:9464"    # Ensure Prometheus can scrape metrics
+    volumes:
+      #- ./otel-collector/config:/etc/otel-collector  # Mount OpenTelemetry config folder
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    networks:
+      - net_monitor
+
+  app:
+    build: .
+    container_name: otel-js-app
+    ports:
+      - "5000:5000"
+    environment:
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - OTEL_METRICS_EXPORTER=otlp
+      - OTEL_TRACES_EXPORTER=otlp
+      - OTEL_LOGS_EXPORTER=otlp
+      - OTEL_PROFILER_PYROSCOPE_ADDRESS=http://pyroscope:4040  # Add Pyroscope endpoint
+      - OTEL_SERVICE_NAME=otel-js-app
+    depends_on:
+      - otel-collector
+      - pyroscope
+    networks:
+      - net_monitor
+
+networks:
+  net_monitor:
+    driver: bridge
+
+volumes:
+  prometheus_data:

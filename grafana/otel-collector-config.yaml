@@ -1,0 +1,68 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:43200"
+      http:
+        endpoint: "0.0.0.0:4318"
+
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: "otel-js-app"
+          static_configs:
+            - targets: ["otel-js-app:5000"]  # apps container name
+
+  filelog: 
+    include:
+      - /var/log/app/*.log  # Update with your app's log file path
+
+processors:
+  batch:
+
+exporters:
+  logging:
+    loglevel: debug
+
+  prometheus:
+    endpoint: "0.0.0.0:9090"
+
+  jaeger:
+    endpoint: "http://jaeger:4317"
+    tls:
+      insecure: true
+
+  otlp:
+    endpoint: "http://tempo:4317"  # Send traces to Tempo
+    tls:
+      insecure: true 
+
+  loki:  # Add Loki as a log exporter
+    endpoint: "http://loki:3100/loki/api/v1/push"
+
+  pyroscope:  # Add Pyroscope as a profiling exporter
+    endpoint: "http://pyroscope:4040"
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [batch]
+      exporters: [prometheus]
+
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp, jaeger]
+
+    logs:
+      receivers: [filelog, otlp]
+      processors: [batch]
+      exporters: [loki]
+
+    profiles:   # Add profiling pipeline for Pyroscope
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [pyroscope]

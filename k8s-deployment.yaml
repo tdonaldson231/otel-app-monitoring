@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: otel-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: otel-app
+  template:
+    metadata:
+      labels:
+        app: otel-app
+    spec:
+      containers:
+        - name: otel-app
+          image: otel-app:latest  # replace with your built image
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: otel-app-service
+spec:
+  type: NodePort
+  selector:
+    app: otel-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
